@@ -3,16 +3,22 @@ use std::num::NonZeroU64;
 use wgpu::{Backends, RequestAdapterOptions, ShaderModuleDescriptor, util::DeviceExt};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Configure here:
+
+    let arguments = [1f32, 2f32, 3f32, 4f32, 5f32, 6f32, 7f32, 8f32, 9f32, 10f32];
+
+    let workgroups = arguments.len().div_ceil(64);
+
+    let output_data_buffer_size = arguments.len() * 4;
+
+    // https://github.com/gfx-rs/wgpu/blob/trunk/examples/standalone/01_hello_compute/src/main.rs
+
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
 
     let adapter = pollster::block_on(instance.enumerate_adapters(Backends::all()))
         .last()
         .unwrap()
         .clone();
-
-    let arguments = [1f32, 2f32, 3f32, 4f32, 5f32, 6f32, 7f32, 8f32, 9f32, 10f32];
-
-    // https://github.com/gfx-rs/wgpu/blob/trunk/examples/standalone/01_hello_compute/src/main.rs
 
     println!("Running on adapter: {:#?}", adapter.get_info());
 
@@ -73,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Now we create a buffer to store the output data.
     let output_data_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: input_data_buffer.size(),
+        size: output_data_buffer_size as u64,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
@@ -83,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // and that usage can only be used with `COPY_DST`.
     let download_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
-        size: input_data_buffer.size(),
+        size: output_data_buffer_size as u64,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -179,8 +185,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // We defined the workgroup size in the shader as 64x1x1. So in order to process all of our
     // inputs, we ceiling divide the number of inputs by 64. If the user passes 32 inputs, we will
     // dispatch 1 workgroups. If the user passes 65 inputs, we will dispatch 2 workgroups, etc.
-    let workgroup_count = arguments.len().div_ceil(64);
-    compute_pass.dispatch_workgroups(workgroup_count as u32, 1, 1);
+    //let workgroup_count = arguments.len().div_ceil(64);
+    compute_pass.dispatch_workgroups(workgroups as u32, 1, 1);
 
     // Now we drop the compute pass, giving us access to the encoder again.
     drop(compute_pass);
